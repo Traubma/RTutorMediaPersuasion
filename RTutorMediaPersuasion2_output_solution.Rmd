@@ -1,0 +1,1730 @@
+
+---
+title: "Problem Set RTutorMediaPersuasion2"
+output:
+  word_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+# Load libraries and source extra code
+library(foreign)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(lfe)
+library(stargazer)
+library(RTutor)
+source("functions2.R")
+
+# render data frames similar to the RTutor browser
+RTutor::set.knit.print.opts(html.data.frame = FALSE, table.max.rows = 25, round.digits = 8, signif.digits = 8)
+
+# continue knitting even if there is an error
+knitr::opts_chunk$set(error = TRUE) 
+```
+
+# Media and Political Persuasion: Evidence from Russia
+
+Author:  Matthias Traub
+
+
+<br>
+
+Welcome to this RTutor problem set! As part of my bachelor thesis at the University of Ulm I created this interactive problem set concerning the influence of Media on voting results using the example of the Russian 1999 Duma election. It is based on the paper **"Media and Political Persuasion: Evidence from Russia"** published in the *American Economic Review* in 2011 by Ruben Enikolopov, Maria Petrova and Ekaterina Zhuravskaya to whom I will refer as **EPZ**. You can find the paper, its appendix and the data used under the following link: [https://www.aeaweb.org/articles?id=10.1257/aer.101.7.3253](https://www.aeaweb.org/articles?id=10.1257/aer.101.7.3253).
+
+The Russian political landscape during the 1990s was very volatile with parties rising and disappearing quite frequently. In this situation of a young and weak democracy media might have a significant influence on voting results. Worth mentioning is especially the 1999 election of the Russian parliament when a party called *Unity* reached a second place although founded only two months prior to the election. A study by White et al. (2005) using self-reported vote choice showed that state-television had played an important role in this process. EPZ examine this situation as well using information on NTV transmitter location to determine NTV availability which is then used to estimate the effect of independent TV on the official voting results.
+
+During this problem set we will replicate their main findings using R. Our main instrument will be a regression analysis on the effect of NTV availability on voting results for several parties with aiming at a good estimation of the magnitude of this effect. We will therefore look not only at NTV availability which is our main variable of interest but also on variables that may of interest concerning endogeneity problems. The results show that voting results for parties considerably supported or opposed by NTV are significantly influenced by its availability. By conducting several control experiments these results can be supported. Furthermore a long time effect for the 2003 election is observable.
+
+<br>
+
+## Exercise Content
+
+  1. Data Overview
+  2. The Effect of NTV Availability <br>
+    2.1 Endogeneity <br>
+    2.2 Fixed Effects and Clustered Standard Errors
+  3. Determinants of NTV Transmitter Location
+  4. An Alternative Approach
+  5. A Placebo Experiment
+  6. Persistence of NTV effects
+  7. Summary
+  8. References
+
+
+
+## Exercise Background Information
+
+This first chapter will not include any calculation. Instead I want to give you some information on the Russian political landscape and the coverage with mass media in the 1990s and 2000s. You won't need this information for solving the problem set so if you are only interested in the econometric part feel free to skip to exercise 1.
+
+<br>
+
+### Political Parties
+The political landscape in Russia during the 1990s constantly changed. As the democracy was very young, partisan attachments (close ties to a party) had not been formed yet with exception for the communist party (KPRF) which had a rather big and loyal electoral base. We are going to focus on the 1999 Duma election that took place in December. The Duma is the lower house within the Russian parliament. Let's have a closer look at the competing parties.
+<br>
+The campaign started in October 1999 and at that time the most popular party was *OVR* ('Fatherland - All Russia') which was created only a month before when the two parties 'Fatherland' and 'All Russia' had joined. With its centrist ideology it was the main opposition party. Therefore, it based its campaign on criticizing the government. Two months ahead of the election, polls predicted an election result of 29 percent.
+<br>
+Second place in terms of popularity was taken by the communist party *KPRF* followed by *Yabloko*, a liberal party and the only one to openly criticize the recently started second Chechnyan War. Those parties were expected to get 21 percent and 10 percent of the votes. All the other competing parties were not expected to pass the 5 percent threshold that was needed to get representation in the parliament.
+<br>
+Just before the campaign start a new party named *Edinstvo* ('Unity') was founded. The official ideology was only based on unconditional support for the government and Vladimir Putin who had been appointed prime minister in August. Even in October 1999 Unity was still mostly unknown to the voters and not expected to play a role in the election at all.
+<br>
+The election in December finally brought a completely different result than predicted. KPRF gained 24.3 percent of the votes and became the largest party. Unity got second with 23.3 percent followed on third place by OVR with only 13.3 percent of the votes. Besides Yabloko (8.5%), *SPS* ('The Union of Rightwing Forces') was another liberal party to pass the threshold (5.9%) and so did nationalist *LDPR* ('Liberal Democratic Party of Russia', 6.0%).
+<br>
+The political landscape changed again drastically until 2003. Unity and OVR formed the *United Russia* party which has become the major political party in Russia until today.
+
+<br>
+
+### Mass Media in Russia
+89 percent of the adult population stated in a survey that television functioned as their primary source of political information. But the TV program was quite limited as there were only three national channels: state-controlled ORT and RTR on the one hand and NTV ('independent TV') on the other hand. The latter was owned by Vladimir Gusinsky, a media tycoon opposing Putin. His channel consequently also criticized Putin and the Kreml. After the presidential election in 2000 that was won by Putin, Gusinsky got imprisoned and, after a short time, forced to sell NTV and leave the country. This resulted in NTV being state-controlled as well. Therefore the 1999 election was special insofar as the news coverage was particularly multisided.
+<br>
+The coverage of the parties on the national TV channels differed sharply during the 1999 election. ORT and RTR spent 28 percent and 24 percent of their news time on Unity compared to only 5 percent spent by NTV. This effect was increased by the content of the news with the state-controlled channels reporting in a rather positive way compared to NTV. The situation was vice versa with OVR: It was given 33 percent of NTV's news time and only 15 percent and 13 percent on the state-controlled channels. NTV's chief news editor Vladimir Kulistikov openly stated that NTV wanted to outweigh OVR's negative coverage on ORT and RTR.
+<br>
+Liberal parties were also treated differently although the discrepancy was significantly smaller. Those differences were apparent less in terms of the spin news coverage received  but more in terms of time devoted to those parties. 32 percent of NTV's broadcasting was devoted to SPS compared to 6 percent on the state-controlled channels. Yabloko got similar coverage on NTV (8%) and RTR (10%) and was barely mentioned on ORT. As mentioned above Yabloko was the only party to criticize the Chechnyan War, a position shared with NTV. The coverage of KPRF and LDPR was reportedly similar.
+
+
+
+## Exercise 1 -- Data Overview
+
+To get a better insight into the study results we want to have a closer look at our data first. Therefore, we start by importing our data set `NTV_Aggregate_Data2.dta` containing information on voting results in electoral districts from 1995 to 2003. For this purpose we can use the `read.dta()` command from the `foreign` package.
+
+
+***
+
+### Info: foreign -- read.dta()
+  If you have set your working directory correctly and it contains a file `data.dta`, importing the file is quite simple as you just need to use the `read.dta()` command on the file name:
+  
+```{r "1",eval=FALSE}
+  library(foreign)
+  read.dta("data.dat")
+```
+  
+  If you use another directory for the data, you can also use the whole path:
+  
+```{r "1__2",eval=FALSE}
+  library(foreign)
+  read.dta("C:/path/data.dat")
+```
+  
+  If you want to store the data as `dat`, you can do the following:
+  
+```{r "1__3",eval=FALSE}
+  library(foreign)
+  dat <- read.dta("data.dat")
+```
+
+***
+
+
+For your first command the command structure is already given. Before entering your code, you will need to hit the `Edit` button. This is necessary at the beginning of every new chapter. If you get stuck you can always press the `Hint` button for further advice and tips. If this doesn't solve your problem you can get the solution by pressing the `Solution` button.
+
+**Task:** Use the `read.dta()` command to read in the given data set `NTV_Aggregate_Data2.dta` and store it as `dat`. For more information on read.dta() check the info box above. When you have finished, hit the `Check` button. In this first task simply uncomment the code by removing the `#` in front of the line and fill in the `...` placeholders with the correct commands.
+
+```{r "1__4"}
+#... <- read.dta("...")
+dat <- read.dta("NTV_Aggregate_Data2.dta")
+```
+
+
+***
+
+### Award: Import Successful
+Welcome to this problem set! I hope you will enjoy it.
+You will receive awards for solving more complicated tasks and quizzes.
+
+***
+
+
+<br>
+
+### Data Introduction
+
+Let's have a look at our data. You can always hit the `Data` button to get to the data explorer but as our data set is quite big we are looking for a quick overview.
+
+**Task:** Use the `head()` command from the `utils` package that is loaded by default to show the first lines of our data set. Uncomment the line and fill in `...` with the correct code.
+
+```{r "1__5"}
+#head(...)
+head(dat)
+```
+
+Let's look at the variables we are interested in starting on the left side of our data set. Each of our observations can be assigned to a specific `region` and even electoral district (`tik_id`) which we will often refer to as 'subregion'.
+
+Next to those ID variables there are several socioeconomic control variables. If you scroll farther to the right you come across some dummy variables, for example `Gorod`.
+
+
+Quiz: What do you think does 'Gorod' mean?
+
+- transmitter [ ]
+
+- factory [ ]
+
+- city [x]
+
+
+
+***
+
+### Award: Russian quizmaster
+You either speak Russian or you are good at guessing. Anyway: Congratulations on solving your first quiz!
+
+***
+
+
+<br>
+
+`Gorod` equals 1 if the observation belongs to a city. The next two variables equal 1 if there was an active NTV transmitter in the subregion in 1997 respectively 1999.
+
+Most of the variables are self-explanatory and you can find a short explanation by hovering over the column headers. You can also use the data explorer. To get there simply press the `Data` button above the last code chunk. If you change to the `Description` tab you find more specific information on those variables such as their units. You can then go back to the exercise by selecting exercise 1 in the top of the screen.
+
+Our dependent variables in most of the regressions we are going to perform are voting results for different parties in different years. Those are stored as `Votes_party_year` and are measured in percentage points. `Turnout_year` consequently gives information on the turnout in the corresponding year.
+
+Both `tvmaxtvflosspower`and `tvmaxtveloss5050powerA` are measurements of NTV signal strength with the latter one being the one used for the calculation of NTV availability as it is corrected with respect to topography.
+
+We have some more socioeconomic factors regarding population and average wage before we finally get to `Watch_OLS` and `Watch_probit_1999` which are both estimates for the probability of receiving NTV based on the signal strength. As the names imply both a linear and a probit model were used for this estimation, but EPZ only use the probit estimate and so will we do. We will discuss its calculation later in this problem set.
+
+<br>
+
+### Voting Results
+
+For a start we want to get a better insight in some of those numbers by visualizing the voting results in the period from 1995 to 2003. Note that, as the political landscape changed rather quickly in those years, not all parties participated in all three elections. Before we can apply the plotting function we need to tidy up our data to get **long data**. To do so we can use the `gather()` function from the `tidyr` package.
+
+Tidyr makes what it names says: It helps tidying up data. It is based on two main assumptions: Every row is an observation and every column is a variable. There are three important commands, of which we need to use gather() first. gather() makes data 'longer'. This means that several columns are converted into key-value pairs. Have a look at the following example: The first table is in wide form, the second one in long form merging columns a and b. Imagine a and b to indicate different treatments, so we have 3 individuals treated 2 times each. *Note, that this code chunk is only for visualization purposes and not intended to be solved.*
+
+
+In our case we want to treat all voting results for all parties in the three elections as a single variable. Our `key` needs to define party and year instead so that we don't lose that information. The `value` is therefore the corresponding voting result which we want to call `votes`.
+
+**Task:** Add the `head()` command and press `Check` to melt all voting results into one variable `votes` (Remember all those variable names start with 'Votes'). The resulting data is store in a variable `d` and the first lines are shown.
+
+```{r "1__6"}
+library(tidyr)
+library(dplyr)
+d <- dat %>%
+  gather(starts_with("Votes"), key = "key", value = "votes")
+#add the head() command
+head(d)
+```
+
+Let's quickly discuss what we did here. The pipe command `%>%` is a command from `dplyr`, that allows to modify data over several steps. In our case `dat` is passed to the `gather()` command and we could forward this modified data to another step (we will actually do this shortly). This works with all functions which require the data information in the beginning of the code such as tidyr and of course dplyr itself. `Starts_with()` is another utility function from dplyr, that extracts all variables starting with the given string.
+
+This command chain melted all voting results into one variable `votes`. To distinguish between the parties and the years we added the variable key. Scroll to the right of the data and have a look at what it looks like now. The key actually contains to variables: party and year. As we want to visualize our results over time we need to separate those pieces of information with the `separate()` command from the `tidyr` package. Note that our key does not only consist of party and year but also 'Votes'. All those three parts are separated by an underline character.
+
+`Separate()` enables us to divide a column containing several variables into a corresponding number of columns. We can call the function by passing to it the column we want to divide (here: key), a vector of the new column names (c("const", "party", "year")) and the separator between those pieces of information ("_"). Note that due to the syntax of separate() we also need to assign 'Votes' to a separate column, however we will delete this placeholder soon.
+
+**Task:** The code is already given so you just need to press the `check` button.
+
+```{r "1__7"}
+d <- dat %>%
+  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+  separate(key, c("const", "party", "year"), sep = "_")
+head(d)
+```
+
+Here you can see much better how the pipe command is used. Starting with `dat` we first melt columns together. We then take this long data and use separate() without mentioning the data used. Note, that we start from the beginning again as RTutor does not accept solutions when columns are renamed or modified in similar ways. In standard R you could simply use separate() on d instead of using gather() again.
+
+Scrolling to the right you can see that we now have three key columns for the constant 'Votes', the `party` and the `year`. There are only a few steps to take before we can visualize the results. We now want to get rid of the `const` variable, transform `year` from string values to integers and get our information of interest to the front of the data set so we can see it right away. Those actions can be performed within a chain using the pipe commands `%>%`. First we are going to use `mutate()` from `dplyr` to modify some variables.
+
+
+***
+
+### Info: dplyr -- mutate()
+We can use `mutate()` from the `dplyr` package to add, remove or modify variables in a data set:
+```{r "1__8",eval=FALSE}
+d %>% mutate(
+  population1998_2 = population1998^2, # adds the square of population1998
+  const = NULL,                        # removes 'const'
+  year = as.integer(year)              # converts year into integers
+)
+```
+
+***
+
+
+Secondly, we need to rearrange our data so that we don't need to scroll to the right of the data if we want to look at our important variables. We can do this with the `select()` function from `dplyr`.
+
+
+***
+
+### Info: dplyr -- select()
+Besides selecting specific variables `select()` also allows us to arrange variables in a new order as it will return them in the selected order. If we wanted to have `party` at the beginning we could do the following:
+```{r "1__9",eval=FALSE}
+d %>% select(party, everything())
+```
+We don't care about the order of the other variables, so we just include them by adding `everything()`.
+<br>
+We could also use `select` to exclude `const` using `-`. But be careful about the order of your commands, putting `-const` in front of `everything()` will not exclude `const`!
+```{r "1__10",eval=FALSE}
+d %>% select(party, everything(), -const)
+```
+
+***
+
+
+**Task:** Modify `d` using `mutate()` to convert `year` into a integer and remove `const`. Use `%>%` to add a `select()` command putting `party`, `year` and `votes` in front. If you need more information on `mutate()` and `select()` check the info boxes above. Finally show the head of `d`. Uncomment and press `check` when you are done.
+
+```{r "1__11"}
+#d <- dat %>%
+#  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+#  separate(key, c("const", "party", "year"), sep = "_") %>%
+#  mutate(const = ..., year = ...) %>% 
+#  select(party, ..., ..., ...)
+#head(...)
+d <- dat %>%
+  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+  separate(key, c("const", "party", "year"), sep = "_") %>%
+  mutate(const = NULL, year = as.integer(year)) %>%
+  select(party, year, votes, everything())
+head(d)
+```
+
+We have arrived at the last step of transforming our data. Remember we wanted to get a visualization of every party's results between 1995 and 1999. In our table we only have results on the subregional level, but we want to present national results. As not all electoral districts have the same population size we can't weight all results equally but must use weighted means instead. For this purpose, we are going to use the `weighted_mean` function designed by McNeill, M. (2017) which can be found [here](https://stackoverflow.com/questions/40269022/weighted-average-in-r-using-na-weights). Furthermore, we need to apply our weighted means on data grouped by party and year which can be done with a combination of `group_by()` and `summarize()` which are both from the `dplyr` package. For an explanation of how those work have a look at the info box below.
+
+
+***
+
+### Info: dplyr -- group_by() and summarize()
+`group_by()` and `summarize()` are two functions from the `dplyr` package often used in combination to apply summary functions to subgroups of data. Have a look at the following example:
+```{r "1__12",eval=FALSE}
+library(dplyr)
+d %>%
+  group_by(party, year) %>%
+  summarize(votes = weighted_mean(votes, population1998, na.rm = TRUE))
+```
+Our data set d gets grouped by party and year first. Then we apply a weighted mean function to those seven groups ignoring `NA` entries in both `votes` and `population1998`. The population in 1998 serves as our weighting variable. We get a data frame with a column `party` containing the parties' abbreviations and a column `votes` for the means.
+<br>
+
+***
+
+
+
+**Task:** Define a data frame `ds` that shows weighted means of voting results grouped by party and year and present the results. The code is already given, so you just need to press `check`.
+
+```{r "1__13"}
+ds <- d %>%
+  group_by(party, year) %>%
+  summarize(votes = weighted_mean(votes, population1998, na.rm=TRUE))
+ds
+```
+
+Note, that this does not result in completely accurate numbers as we are ignoring population changes over time. While these are probably quite small, changes in turnout might be more of an issue. We would need to include the turnout in each of the three elections combined with population size. This would have resulted in a lot more  of code to write so far which is why we exclude this issue in our overview - after all it is only an overview to get a rough insight into the data.
+
+
+Quiz: Which parties did pass the 5% threshold in the 2003 election according to our calculation?
+
+- Edinstvo [x]
+
+- KPRF [x]
+
+- LDPR [x]
+
+- NDR [ ]
+
+- OVR [ ]
+
+- SPS [ ]
+
+- Yabloko [ ]
+
+
+<br>
+
+Note that SPS actually did not take part in the 1995 election but it's predecessor party did and therefore we treat those two as the same party.
+
+We now have data for national voting results between 1995 and 2003 and want to visualize those in a way so we get a separate graph for each of the seven parties. For this we are going to use the `ggplot2` package. ggplot2 is a package used for plotting data. A graph is generated with the `ggplot()` function to which we can pass the used data and general aesthetics such as axes or colours. We can than add modifiers to change the look of the graph. For now, we assign `year` and `votes` to our x- and y-axes. Furthermore, we want each party to be in a different colour. All this information is given in the ggplot() call via `aes()`. Now we can add lines (`geom_line()`) and data points (`geom_point()`) for a better overview.
+
+**Task:** Press `Check` to show a graph of the voting results of all seven parties between 1995 and 2003.
+
+```{r "1__14"}
+ggplot(data=ds, aes(x=year, y=votes, color = party)) + geom_line() +  geom_point()
+```
+
+Some people prefer a separate graph for each party. You can do such an arrangement by adding the modifier `facet_wrap(~party)`. To show how this looks like we want to present the same data a second time.
+
+**Task:** Use ggplot() to show the same summary again. However this time add the `facet_wrap()` command with a `+` command to split the data into seven graphs.
+
+```{r "1__15"}
+ggplot(data=ds, aes(x=year, y=votes, color = party)) + geom_line() +  geom_point() + facet_wrap(~party)
+```
+
+
+Quiz: Have a look at the graphs above. How many parties participated in the 1999 election?
+
+Answer: 6
+
+<br>
+
+That was a short overview of the data we are using in this problem set and not directly connected to the analysis of the effect of NTV availability. This will be done during the next sections starting in exercise 2 with our main regression. We are then going to discuss some issues occurring with regressions and checking for the validity of our assumptions before looking at the problem from a slightly different angle.
+
+
+
+## Exercise 2 -- The Effect of NTV Availability
+
+Our main goal is to analyse the effects of NTV availability on voting behaviour. To estimate this coefficient will be our aim during this section. More specifically we want to know: Does NTV availability influence voting results? And if it does, we want to estimate the magnitude of this effect. This estimation will be done using regression analysis.
+
+<br>
+
+### Regression Theory
+
+For our analysis we assume a **linear relationship**. Therefore, a **multiple linear regression (MLR) model** looks the following:
+$$y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... + \beta_k x_k + u$$
+In this formula $y$ is our dependent variable, $\beta_0$ is the intercept, $x_1,...,x_k$ are the independent (or explanatory) variables with their associated coefficients $\beta_1,...,\beta_k$. $u$ finally, is the error term (or residual) containing  factors that are not included into our model but still have an effect of $y$. Regression analysis aims for getting good estimates for the coefficients by minimizing the error term. To achieve this, we will use the most popular method, the **ordinary least squares (OLS)** method.
+
+
+***
+
+### Info: OLS Regression
+We want to estimate an equation that looks like the following:
+$$\hat y = \hat\beta_0 + \hat\beta_1 x_1 + \hat\beta_2 x_2 + ... + \hat\beta_k x_k$$
+The ^ symbols on top of our coefficients and the dependent variable indicate estimators. Therefore $\hat \beta_0$ is the estimator for $\beta_0$ and so on. The residuals are therefore calculated as the difference between the actual value $y_i$ and its estimator $\hat y_i$: $$u = y_i - \hat y_i$$.
+In OLS we want to choose the coefficients in a way that minimizes the sum of the squared residuals:
+$$\sum_{i=1}^n u_i^2 = \sum_{i=1}^n (y_i - \hat\beta_0 - \hat\beta_1 x_{i1} - ... - \hat\beta_k x_{ik})^2$$
+with $n$ denoting the number of observations included. The solution to this minimization problem is:
+$$\hat\beta = (X^T X)^{-1} X^T y$$
+Where $\hat\beta$ is the vector of the coefficients, $X$ is a $n \times (k+1)$ matrix containing the k independent variables for all n observations and a constant vector and $y$ denotes a vector of the observed dependet variables. More information on OLS in multiple linear regressions can be found in Wooldridge (2016, Chapter 3).
+
+***
+
+
+<br>
+
+### Assumptions for OLS estimation
+
+Wooldridge (2016, Chapter 3) states four assumptions that need to be fulfilled for the estimator to be unbiased ($E(\hat\beta_k) = \beta_k$):
+
+*  **MLR.1: Linear in Parameters** - $y$ is a linear combination of the dependent variables $x_1,...,x_k$, an intercept and an error term $u$ (see the MLR model at the top of this page) <br>
+*  **MLR.2: Random Sampling** - Our observations are randomly drawn and follow the population model in MLR.1 <br>
+*  **MLR.3: No Perfect Collinearity** - The independent variables in the sample are neither constant nor **exactly** linear related <br>
+*  **MLR.4: Zero Conditional Mean** - The error term is expected to equal zero independently of the value of the explanatory variables: $E(u|x_1,...,x_k) = 0$
+  
+Furthermore, Wooldridge adds a fifth assumption to enable correct estimation of the variance of the estimators:
+
+*  **MLR.5: Homoscedasticity** - The error term has equal variance for all given values of the explanatory variables: $Var(u|x_1,...,x_k) = \sigma$
+
+Under assumptions MLR.1 through MLR.5 the variances of the coefficients can be calculated as:
+
+$$Var(\hat\beta_j) = {\sigma^2 \over {\textrm{SST}_j (1-R_j^2)}}$$
+where $\textrm{SST}_j = \sum_{i=1}^n (x_{ij} - \bar x_j)^2$ denotes the total sample variation in $x_j$ and $R_j^2$ is gained from regressing $x_j$ on all other independent variables.
+
+<br>
+
+### A Simple Regression Model
+
+For a start we want to perform a simple regression model only including NTV availability as an explanatory variable to analyse its effect on the voting results and the turnout in the 1999 Duma election. We will study all six parties later but for now we want to keep to Unity, the party supporting the government. The voting results for Unity are stored in the variable `Votes_Edinstvo_1999`, as a measurement for NTV availability we use `Watch_probit_1999` which can be described as the probability of receiving NTV. For more details on Watch_probit_1999 and its calculation check the info box below.
+
+
+***
+
+### Info: Watch_probit_1999
+Although we have information on NTV transmitter locations we cannot simply assume those subregions to receive NTV. On one hand in some areas of subregions with transmitters people reported that they were not able to receive NTV, on the other hand there were subregions without transmitters where you could receive NTV at least in some areas. This happens due to topography and distance as well as transmitter signals reaching neighbouring subregions.
+To find a remedy EPZ calculated a variable NTV availability that gives the probability of receiving NTV dependent on the signal strength. For this calculation they use data from a survey they conducted where people among other things were asked whether they received NTV. They use this information combined with the measured signal strength to perform the following regression:
+$$Pr(\textrm{NTV}\_\textrm{available} = 1) = \Phi(\beta_0 + \beta_1 \textrm{Signal}\_\textrm{strength})$$
+This is a **Probit-Regression** used for the estimation of probabilities. The linear expression on the left gets transformed into a standard normal distribution. Therefore, the estimates are in the interval $[0,1]$.
+EPZ have not documented their regression but they report that they have determined $\beta_0$ as 0.654 and the coefficient for the signal strength as 0.008. By applying this function to the measured signal strength for all observations we obtain `Watch_probit_1999` as the probability of receiving NTV, usually referred to as NTV availability.
+
+***
+
+
+Again, all variables we need are stored in `NTV_Aggregate_Data2.dta`. We need to load this data set first.
+
+**Task:** Use `read.dta()` to import the data. Press `edit` first, enter your code and press `check` when you have finished.
+
+```{r "2__16"}
+dat <- read.dta("NTV_Aggregate_Data2.dta")
+```
+
+EPZ are excluding some of the observations due to several reasons: Firstly, Moscow and St. Petersburg are excluded as they count as regions and do not show any variation in NTV availability. We therefore want to keep them out of our analysis as we are going to use region fixed effects (we will discuss this topic shortly). Furthermore Chechnya, Dagestan and Ingushetia are excluded due to the bad security situation caused by the Chechnyan War.
+<br>
+Unfortunately, those considerations are not comprehensible looking at their calculations. EPZ exclude regions 5 and 6 which, if you have a closer look, do vary in all measurement of NTV availability besides the fact that only two regions get excluded instead of five. Anyway, to stick with their results we are going to exclude regions 5 and 6 as well using the `filter()` command from `dplyr` which allows to choose specific rows of a data set via the chosen conditions.
+
+
+***
+
+### Info: dplyr -- filter()
+The `filter()` command from `dplyr` is basically the counterpart of `select()` as it allows two select specific lines (observations) of a data set. We use it by selecting a data set and one or more conditions applying to a certain variable. If we, for example, wanted to select all observations from cities, we could use the following command:
+```{r "2__17",eval=FALSE}
+library(dplyr)
+dat %>% filter(Gorod == 1)
+```
+In our case we come across the problem that we have two values to exclude (region == 5 and region == 6). To do so we use the logical `OR` indicated by `|`. In combination with the negation `!` this results in the following code:
+```{r "2__18",eval=FALSE}
+library(dplyr)
+dat %>% filter(!(region == 5 | region == 6))
+```
+
+***
+
+
+**Task:** Exclude all observations from regions 5 and 6 using `filter()`. The code is already given, so you just need to click the `check` button. For more information on the `filter()` command check the info box above.
+
+```{r "2__19"}
+dat <- dat %>% filter(!(region == 5 | region == 6))
+```
+
+Now that we have prepared and modified our data set we can finally perform our first regression analysis. As mentioned above this will be a simple OLS regression with only one explanatory variable: NTV availability. Furthermore, we only want to consider voting results for Unity for now as we will need to do some changes to our model later before applying this final version to all results as well as turnout. For now we are looking for a first idea of how NTV availability might influence voting results at all.
+
+As this is a standard OLS regression we could use the `lm()` function from base R but instead we are going to use `felm()` from the `lfe` package. For our first steps it will work the same way as `lm()` (and the syntax is the same as well) but later on we will come across some more advanced features that can be done with `felm()`.
+
+
+***
+
+### Info: lfe -- felm(): OLS
+For our first calculation `felm()` will work exactly like R's standard `lm()` command. If we wanted to regress z on x and y, we would do the following:
+```{r "2__20",eval=FALSE}
+library(lfe)
+felm(z ~ x + y, data = dat)
+```
+
+***
+
+
+Before we enter the code, let's have a quick glance at the formal OLS model we want to estimate:
+$$\textrm{Votes_Edinstvo_1999}_i = \beta_0 + \beta_1 \textrm{Watch_probit_1999}_i + u_i$$
+with $i$ identifying our observations included. Therefore $\beta_1$ is the coefficient we are interested in right now. Both variables are stored in our loaded data set `dat`.
+
+**Task:** Fill in the missing parts to regress Unity's 1999 voting results (`Votes_Edinstvo_1999`) on the NTV availability (`Watch_probit_1999`) via an OLS. Store your results in a variable `OLS1`. Uncomment the line and hit the `check` button. For more information on `felm()` have a look at the info box above.
+```{r "2__21"}
+#... <- felm(... ~ ..., data = dat)
+OLS1 <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999, data = dat)
+```
+
+
+***
+
+### Award: Regression Master I
+Congratulations, you performed your first regression in this problem set. There are more to come!
+
+***
+
+
+Before we look at the results of our regression let's have a guess. Remember that Unity was the party supporting the government and that NTV opposed the government.
+
+
+Quiz: Which sign should we expect the coefficient for NTV availability to have?
+
+- positive [ ]
+
+- negative [x]
+
+
+<br>
+
+NTV was opposing the government and its supporting party Unity, therefore we can assume that people watching NTV tend to not vote for this party. Therefore, a higher probability of receiving NTV should imply a lower vote share for Unity, according to our assumptions. To verify our guess, we want to show a summary of our regression.
+
+Instead of using the standard `summary()` function we make use of the `stargazer` package and its function of the same name. Stargazer is a package offering a nice visualization of regression and data summary. There are numerous customizations you can make regarding for example the output format and the style of the presentation. If you want to learn more about all the options you can find the package description <a href="https://cran.r-project.org/web/packages/stargazer/stargazer.pdf" target = "_blank"> here</a>.
+
+**Task:** Hit the `check` button to show a summary of OLS1.
+
+```{r "2__22",results='asis'}
+stargazer(OLS1,
+          type = "text",
+          style = "aer",
+          digits = 2,
+          report = "vcs*",
+          object.names = TRUE,
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+Let's do a little quiz on those results.
+
+
+Quiz: How would a 20 percent DECREASE in NTV availability affect the voting results for Unity?
+
+- -1.80% [ ]
+
+- +0.18% [ ]
+
+- +7.20% [x]
+
+- -7.20% [ ]
+
+
+<br>
+
+Have a look at the regression summary: Both the voting results and the NTV availability are measured in percentage points and our $\hat\beta_1$ equals -35.84. Therefore, our results imply that a **increase** in NTV availability of 100 percentage points leads to a **loss** in votes of about 36 percentage points and vice versa. Our standard errors equal about 2.47 percentage points leading to a significance at the 1% level which means, that we are 99% sure that the true coefficient $\beta_1$ is larger than zero. Furthermore, looking at the $R^2$ shows, that our regression explains 9% of the occuring variance among the voting results.
+
+In the subsequent chapters we will have a closer look at other variables possibly influencing our results to make sure our assumptions for unbiased estimations are fulfilled.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Exercise 2.1 -- Endogeneity
+
+Obviously only considering NTV availability is not a very good model to describe voting results as there are far more variables influencing those. This does not have to be necessarily a problem: All factors not included in the model are part of the error term. But if we find  a variable correlated to NTV availability as well, this will violate assumption MLR.4 and we speak about the problem of **endogeneity**. NTV availability is therefore called a **endogenous variable**.
+
+Remember we started by estimating the following problem:
+$$\textrm{Votes_Edinstvo_1999}_i = \beta_0 + \beta_1 \textrm{Watch_probit_1999}_i + u_i$$
+To ensure MLR.4 holds we need to find every variable correlated to both NTV availability and the error term $u_i$, or in other words: all variables correlated to NTV availability that influence voting results other than through NTV availability. Consider for example our dummy variable `Gorod` showing whether an observation is from a city. One could assume that in cities people tend to vote for the opposition parties not only due to better NTV availability but also because they live in a society which is keener to debate political topics and therefore less focused on the current government. But it also makes sense that cities are better provided with NTV transmitters as well. All in all, it seems reasonable to think that both NTV availability and city status reduce the votes for Unity but as they may be correlated some of the city effects are included into the estimation of $\hat\beta_1$. Therefore, a better model would be:
+$$\textrm{Votes_Edinstvo_1999}_i = \beta_0 + \beta_1 \textrm{Watch_probit_1999}_i + \beta_2 \textrm{Gorod}_i+ u_i$$
+
+<br>
+
+### Omitted Variable Bias
+
+Imagine we have a true model (following assumptions MLR.1 through MLR.4) that looks like the following:
+$$y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + u$$
+If $x_1$ was the variable we are interested in we should do a regression of $y$ on $x_1$ **and** $x_2$ in order to get an unbiased estimator of $\beta_1$ (and of course unbiased estimators for $\beta_0$  and $\beta_2$). But for some reason we only perform a regression $x_1$ whereupon we get the equation
+$$\tilde y = \tilde \beta_0 + \tilde \beta_1 x_1$$
+The `~` symbol indicated that those estimators come from an **underspecified** model. To be able to calculate the difference between $\beta_1$ and $\tilde \beta_1$ we first run a regression of $x_2$ on $x_1$ resulting in the equation:
+$$\tilde x_2 = \tilde \delta_0 + \tilde \delta_1 x_1$$
+Treating $\tilde \delta_1$ as fixed (as it only depends on the explanatory variables) and due to the full model fulfilling MLR.1 through MLR.4 we can derive:
+$$\textrm{Bias}(\tilde \beta_1) = E(\tilde \beta_1) - \beta_1 = E(\hat \beta_1 + \hat \beta_2 \tilde \delta_1) - \beta_1 =
+E(\hat \beta_1) + \tilde \delta_1 E(\hat \beta_2) - \beta_1 = \beta_1 + \tilde \delta_1 \beta_2 - \beta_1 = \tilde \delta_1 \beta_2$$
+This implies that $\beta_1$ is unbiased if $x_2$ is not part of the true model ($\beta_2 = 0$) or if $x_1$ and $x_2$ are uncorrelated ($\tilde \delta_1 = 0$). We talk about an **upwards bias** if $\tilde \delta_1 \beta_2$ is greater than zero and about a **downwards bias** otherwise. If we are more interested in expressing the magnitude of the effect we can use the term **biased towards zero** to describe a bias that reduces the absolute value of a estimator.
+If you want to read about this in more detail have a look at Wooldridge (2016, Chapter 3).
+<br><br>
+What does this mean to our case where we look at NTV availability and city status? As mentioned above we might assume that people in a city tend to vote for opposition parties not only (although partly) due to better NTV availability. Remember `Gorod` equals one if the observation is from a city and zero otherwise.
+
+
+Quiz: What correlation do Gorod and Watch_probit_1999 probably have?
+
+- positive correlation [x]
+
+- negative correlation [ ]
+
+<br>
+It is reasonable to assume that transmitters are built in more populated regions, especially near cities which have a higher NTV availability therefore. To be sure we perform a regression of the city status on the NTV availability. This will also give us the $\tilde \delta_1$ we need to calculate the bias of $\beta_1$.
+
+**Task:** Perform a simple OLS regression of `Gorod` on `Watch_probit_1999` using felm() and store it as `Delta`.
+
+```{r "2_1__23"}
+#loading the data first
+dat <- read.dta("NTV_Aggregate_Data2.dta") %>% filter(!(region == 5 | region == 6))
+#now perform the regression
+Delta <- felm(Gorod ~ Watch_probit_1999, data = dat)
+```
+
+**Task:** Press `Check` to show the results.
+
+```{r "2_1__24",results='asis'}
+stargazer(Delta,
+          type = "text",
+          style = "aer",
+          digits = 4,
+          report = "vcs*",
+          object.names = TRUE,
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+As we have guessed there is a positive relationship between the two variables. But to calculate the bias we still need the 'true' estimator of $\beta_2$ from the long model. We then can show to which extent we miscalculated the coefficient of NTV availability due to ignoring city status.
+
+**Task:** Perform a multiple OLS regression of `Votes_Edinstvo_1999` on `Watch_probit_1999` and `Gorod`. Store the model in a variable `OLS_long`. Perform another simple OLS regression only on Watch_probit_1999 and store it as `OLS_short`.
+
+```{r "2_1__25"}
+OLS_long <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod, data = dat)
+OLS_short <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999, data = dat)
+```
+
+Let's do a little quiz before we actually look at the regression results.
+
+
+
+Quiz: When omitting Gorod - Do you think the coefficient for NTV availability is biased towards zero?
+
+- yes [ ]
+
+- no [x]
+
+
+<br>
+
+
+
+**Task:** Press `Check` to show the results of both OLS_short and OLS_long.
+
+```{r "2_1__26",results='asis'}
+stargazer(OLS_short, OLS_long,
+          type = "text",
+          style = "aer",
+          digits = 4,
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+<br>
+*One remark on notation: I will refer to decreased coefficients and effects if their absolute value decreases as we are talking mainly about the magnitude of the effect here. Therefore we will talk about a decreasing coefficient here to emphasize the loss of impact.*
+<br>
+As you can see the coefficient of NTV availability has decreased by roughly three percentage points. This difference used to be partly integrated into the effect of NTV availability due to the correlation between those variables. We want to test whether this fits in with the prediction the formula for the omitted variable bias makes ($\tilde \delta_1 * \beta_2$). All numbers we need can be found in the two summary tables for Delta, OLS_short and OLS_long.
+
+**Task:** Use the code chunk below to calculate the prediction of the omitted variable bias. Use your results to answer the question below. Only use `Run Chunk`.
+
+```{r "2_1__27",optional=TRUE}
+1.3960*-2.2385
+
+```
+
+
+Quiz: What omitted variable bias (up to 4 digits) do we expect?
+
+Answer: -3.1249
+
+<br>
+
+
+***
+
+### Award: Omitting variables is for Beginners
+Congratulations, you have understood the idea of the omitted variable bias!
+
+***
+
+
+The formula predicts a bias of -3.1249 which is exactly the difference between the coefficients on NTV availability in our long and short model. When including the city status, the effect of NTV availability isn't that strong anymore. This confirms our assumption that people in cities tend to vote for Unity less likely partly, but not only due to higher NTV availability. Ideally, we would include every other variable that is correlated to both NTV availability and the error term. However, this is not possible usually as some effects might be not measurable or we just don't consider them to be influential. None the less should we always try to include as many of those variables as possible in order to minimize the bias on our variable of interest.
+
+<br>
+
+### Control Variables
+
+EPZ consequently include several control variables to ensure a good estimate of the effect of NTV availability. Therefore, the full model looks like the following:
+$$\textrm{vote}^j_i = \beta_0 + \beta_1 \textrm{NTV}_i + \beta_2' X_i + \beta_3' E_i + u^j_i$$
+To explain the votes party $j$ gets in observation $i$ we include, besides NTV availability, electoral outcomes from 1995 ($X_i$) and a couple of socioeconomic characteristics measured in 1998 ($E_i$). The socioeconomic factors contain the city dummy `Gorod`, the fifth-order polynomials of `population1998` and `wage98` (average wage) as determinants of NTV availability, and measurements for the per capita supply with doctors (`doctors_pc1998`) and nurses (`nurses1998`) as determinants for the quality of the public goods provided. Note, that those control variables mainly come from a survey of the official Russian statistical agency 'Rosstat'.
+<br>
+As the final step in this section we want to estimate Unity voting results based on the full set of variables. To do so we first need to add the polynomials of `wage98` and `population1998` using `mutate()` as those are not included in our data set.
+
+**Task:** The code for adding the polynomials is already given Therefore, you just need to hit `Check`.
+```{r "2_1__28"}
+dat <- dat %>%
+  mutate(population1998_2 = population1998^2,
+         population1998_3 = population1998^3,
+         population1998_4 = population1998^4,
+         population1998_5 = population1998^5,
+         wage98_2 = wage98^2,
+         wage98_3 = wage98^3,
+         wage98_4 = wage98^4,
+         wage98_5 = wage98^5)
+```
+
+We can now do the last step in this chapter. Including all of those control variables will reduce our endogeneity problems significantly. The problem with regressions with that many control variables is, that the code tends to get very long. Therefore, I will generally give you the code for regressions from now on.
+
+**Task:** Press `Check` to perform a regression with all control variables and show the results.
+```{r "2_1__29",results='asis'}
+Unity <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995, data = dat)
+stargazer(Unity,
+          digits = 2,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"),
+          object.names = TRUE)
+```
+
+<br>
+
+Including that many  variables it is hardly possible to make a prediction as all variables influence each other. Hence, we won't look at a formula for the omitted variable bias. Nonetheless, in retrospect we can analyse our results. Firstly, note that our control variables are not available for all observations. The number of observations used in the regression has therefore gone down from 2238 to 1686. Secondly the coefficient for NTV availability has decreased clearly by roughly another eight percentage points implying that the effect of NTV availability on voting results for Unity was still estimated too strong. Due to including all those control variables the $R^2$ has increased to 20% as well which means that we can now explain 20% of the variance appearing in Unity voting results through our model. In section 3 we will have a look at why EPZ chose to include exactly those variables.
+
+
+
+## Exercise 2.2 -- Fixed Effects and Clustered Standard Errors
+
+### Fixed Effects
+
+In Section 2.1 we have discussed endogeneity problems occurring (mostly) when omitting variables that are correlated to both the dependent variable and the error term. This problem can be solved by simply including all of those variables. But obviously there are factors that we can not observe or maybe just not express in numbers. Imagine a leading politician of Unity started his political career as a mayor in a certain electoral district. If he did a good job there, people might be more likely to vote for Unity on the national level as well and vice versa. For now, we want to consider such effects at a regional level, in other words we want to handle **regional fixed effects**. Let's start by visualising our problem.
+
+
+**Task:** Press `Check` to load the data and adapt it the same way as in the previous sections as well as performing the latest regression again.
+```{r "2_2__30"}
+#read in data
+dat <- read.dta("NTV_Aggregate_Data2.dta") %>%
+  filter(!(region == 5 | region == 6)) %>%
+  mutate(population1998_2 = population1998^2,
+         population1998_3 = population1998^3,
+         population1998_4 = population1998^4,
+         population1998_5 = population1998^5,
+         wage98_2 = wage98^2,
+         wage98_3 = wage98^3,
+         wage98_4 = wage98^4,
+         wage98_5 = wage98^5)
+
+#perform regression
+Unity <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995, data = dat)
+```
+
+If we have fixed effects for certain groups of observations we can visualize those by plotting the group variables against the residuals of the regression. In our case we assume that errors depend on effects on a regional basis. Therefore, we take region IDs as our x variable and the residuals for the y-axis.
+
+**Task:** Press `Check` to show the plot.
+
+```{r "2_2__31"}
+#which observations are used for the regression
+temp <- rep(TRUE, nrow(dat))
+temp[na.action(Unity)] <- FALSE
+#assigning residuals to correct observations
+dat$resid[temp] <- Unity$residuals
+#coloring regions 2 and 17
+color <- ifelse(dat$region %in% c(2,17), 'red', 'black')
+#plot
+ggplot(dat) + aes(region, resid) + geom_point(color = color)
+```
+
+As you can see the residuals are quite unevenly dispersed. Remember MLR.4: $E(u|x_1,...,x_k) = 0$. Therefore, residuals should be evenly distributed around zero independently of the region. I have marked two outliers for you, that show this problem very clearly. Almost all residuals of region 2 are below zero whereas all residuals of region 17 are greater than zero. As supposed there seem to be effects we have not included so far, differing from region to region. The most intuitive way to handle this problem would be to include factors for each region. Remember we wanted to estimate the model:
+$$\textrm{vote}^j_i = \beta_0 + \beta_1 \textrm{NTV}_i + \beta_2'X_i + \beta_3'E_i + u^j_i$$
+But now we need to add a separate effect for each region by including dummy variables $\delta^j_{ik}$ for each region $k$ with the corresponding coefficient $\alpha_{ik}$:
+$$vote^j_i = \beta_0 + \beta_1 \textrm{NTV}_i + \beta_2'X_i + \beta_3'E_i + \sum_{k \in \textrm{region}} \alpha_{ik} \cdot \delta^j_{ik} +u^j_i$$
+You could also imagine that we calculate an individual intercept for each region including 'base factors'. This would leave us with dozens of coefficients which we are not interested in. Instead we can use regional fixed effects which will give us the same results without returning all those coefficients. This can be done quite nicely with the `felm()` function. To find out how to perform fixed effects regressions, check the info box below. If you want more details on fixed effects regression and when to use them have a look at Wooldridge (2016, Chapters 13 and 14)
+
+
+***
+
+### Info: lfe -- felm(): fixed effects
+As mentioned above, `felm()` allows for some more advanced options such as fixed effects and clustered standard errors (we will discuss this topic shortly). Those can be added the following way:
+```{r "2_2__32",eval=FALSE}
+library(lfe)
+#standard OLS of z on x and y
+felm(z ~ x + y, data = dat)
+#including fixed effects
+felm(z ~ x + y | fixed_eff_var, data = dat)
+```
+The variable `fixed_eff_var` sets our groups for which we assume fixed effects. In our case this is `region`.
+
+***
+
+
+**Task:** Perform another regression with the same variables as in `Unity` but include fixed effects on the `region` level. Store your results in a variable `FELM1`. Decomment and press `Check` when you have finished.
+
+```{r "2_2__33"}
+#add fixed effects
+#FELM1 <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+#               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+#               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998, data = dat)
+FELM1 <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 | region, data = dat)
+```
+
+
+***
+
+### Award: Regression Master II
+Congratulations, you got a deeper insight into regression theory and successfully applied fixed effects!
+
+***
+
+
+The stargazer command is very long with all its customizations. Therefore I wrote a function `reg.sum()` for you, that only needs the regression variables as input to show a summary table. From now on we can use it for most of the regressions where we are interested in NTV availability. Note, that it only displays the coefficient for NTV availability as this is the one we are interested in and the table looks more clearly.
+
+**Task:** Use reg.sum() to show a summary table of both `Unity` and `FELM1`.
+
+```{r "2_2__34",results='asis'}
+#reg.sum(..., ...)
+reg.sum(Unity, FELM1)
+```
+
+<br>
+
+Including region fixed effects had a massive influence on our estimator for the effect of NTV availability: It has decreased to -15.48 percentage point and is hence not even half es strong as in our very first regression without any control variables. These results imply that a 10% increase in NTV availability lead to a 1.5% loss in voting results for Unity. Note, that the $R^2$ has increased to 66%.
+
+<br>
+
+### Clustered Standard Errors
+
+Although we eventually got our final coefficients, we have never talked about correct standard errors so far. Remember MLR.5 that stated that the error term has equal variance for all given values of the explanatory variables ($Var(u|x_1,...,x_k) = \sigma$). In absence of this requirement we observe **heteroscedasticity**. In this case our estimators are not biased but we calculate wrong standard errors. Again, we want to plot the residuals against regions to check whether this assumption holds.
+
+**Task:** Press `Check` to show the plot.
+
+```{r "2_2__35"}
+#which observations are used for the regression
+temp <- rep(TRUE, nrow(dat))
+temp[na.action(FELM1)] <- FALSE
+#assigning residuals to correct observations
+dat$resid[temp] <- FELM1$residuals
+#coloring regions 16 and 21
+color <- ifelse(dat$region %in% c(16, 21), 'red', 'black')
+#plot
+ggplot(dat) + aes(region, resid) + geom_point(color = color)
+```
+
+The residuals are now quite evenly dispersed around zero ($E(u|region) = 0$) but they seem to have different variances. This can be seen especially with regions 16 and 21 which are marked red. The standard errors for region 21 are far less spread than those of region 16 implying heteroscedasticity. A possible explanation would be the following: Each region consists of several electoral districts (or subregions) and we have ethnic diversity within each region (with different ethnic groups voting different parties). If ethnical groups are 'mixed' through the subregions then there are no differences between the subregions. Therefore, residuals are varying rather little. This would be the case in region 21. On the opposite site we imagine a region where ethnical groups are clustered within subregions (i.e. in slums) and hence voting results would be rather diverse.
+<br>
+This problem is solved by applying **clustered standard errors**. There will be no changes in our residuals plot but the standard errors for our coefficients take this into account. Like fixed effects, clustered standard errors can be applied using felm(). Have a look at the info box below to learn how the syntax works.
+
+
+***
+
+### Info: lfe -- felm(): Clustered Standard Errors
+Besides applying fixed effects felm() also allows for using clustered standard errors as you can see below for regressing z on x and y. The placeholder '0' indicates that we are not using any instrumental variables.
+```{r "2_2__36",eval=FALSE}
+library(lfe)
+#only fixed effects
+felm(z ~ x + y | fixed_eff_var)
+#fixed effects and clustered standard errors
+felm(z ~ x + y | fixed_eff_var | 0 | cluster_var)
+```
+
+***
+
+
+**Task:** Perform another regression with the same variables as in `FELM1` but include fixed effects and clustered standard errors on the `region` level. Store your results in a variable `FELM2`. Use reg.sum() to show a summary table of Unity, FELM1, FELM2 Decomment and press `Check` when you have finished.
+
+```{r "2_2__37",results='asis'}
+#add fixed effects
+#FELM2 <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+#               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+#               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998, data = dat)
+FELM2 <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 | region | 0 | region, data = dat)
+#show summary
+reg.sum(Unity, FELM1, FELM2)
+```
+
+<br>
+
+
+***
+
+### Award: Regression Master III
+Perfect! You mastered the final step in regression theory for this problem set.
+
+***
+
+
+As mentioned before, the coefficient for NTV availability has not changed. Remember unbiasedness only requires MLR.1 to MLR.4 to be fulfilled. However, the standard error has increased slightly, we observe however still significance on the 1% level. Note, that clustered standard errors do also not influence the $R^2$ as it only depends on the predicted values and therefore on the coefficients.
+<br>
+This is the final regression model that we are going to use. EPZ also perform a model without including 1995 voting results but are using mainly the full model. To keep the summary clearly represented we are omitting those calculations. We can now use this model and apply it to all voting results from 1999 as well as to turnout. There is nothing new to this code which is why you only need to add the summary command.
+
+**Task:** Add the reg.sum() command to show the regression results.
+
+```{r "2_2__38",results='asis'}
+#Unity
+Unity <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | region, data = dat)
+
+#OVR
+OVR <- felm(Votes_OVR_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | region, data = dat)
+
+#SPS
+SPS <- felm(Votes_SPS_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | 0, data = dat)
+
+#Yabloko
+Yabloko <- felm(Votes_Yabloko_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | 0, data = dat)
+
+#KPRF
+KPRF <- felm(Votes_KPRF_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | region, data = dat)
+
+#LDPR
+LDPR <- felm(Votes_LDPR_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | region, data = dat)
+
+#Turnout
+Turnout <- felm(Turnout_1999 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 +
+               Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+               region | 0 | region, data = dat)
+
+#enter your code to show the summary table
+reg.sum(Unity, OVR, SPS, Yabloko, KPRF, LDPR, Turnout)
+```
+
+<br>
+
+Note that we do not cluster standard errors for SPS and Yabloko as R outputs an error in this case. This is not too big of a problem as we are mainly interested in the coefficient but keep in mind that standard errors are not correct. However, significance levels remain the same in this case. What do these results tell us?
+
+
+Quiz: Mark all correct statements!
+
+- The presence of NTV encourages people to participate in the election. [ ]
+
+- An increase in NTV availability implies a decrease in the voting results for Unity and nationalist LDPR. [x]
+
+- The coefficient for NTV availability is significant for all parties. [x]
+
+
+<br>
+
+The results come up to our expectations. We have already discussed the loss in votes for Unity going along with increased NTV availability. We also observe increasing results for the parties supported by NTV (OVR, SPS, Yabloko). Combined they receive 1.1 percentage points more if NTV availability increases by ten percentage points. We were not able to guess the outcomes of KPRF and LDPR as they were treated quite similar on state-owned channels and NTV. However, we find significant results with KPRF winning 0.39% and LDPR losing 0.14% respectively in case of a 10% increase in NTV availability. Besides, we were also not able to predict the impact on turnout which drops according to our model by 0.67 percentage points.
+<br>
+In sections 3 and 4 we will have a look at why EPZ chose to include exactly those control variables and go with an alternative approach of estimating the effect of NTV availability to check for the robustness of our estimation.
+
+
+
+## Exercise 3 -- Determinants of NTV Transmitter Location
+
+NTV inherited its infrastructure mainly from the former Soviet education channel (Channel 4 Ostankino) in 1996 according to an interview EPZ had with Evgeny Kiselev, the former anchor and general director of NTV. As far as we know there is no system in the distribution of NTV transmitters besides the fact that it seems reasonable that transmitters concentrate in stronger populated regions. There were 387 active NTV transmitters in 1997. Mainly due to repairs this number grew to 425 until 1999. Have a look at the following map from the appendix to our EPZ's paper in which both NTV transmitters and availability in 1999 are drawn.
+
+<img src="NTV_Transmitters.png" alt="example" width="750">
+Figure 1: Map of NTV transmitter location and NTV availability
+Source: Enikolopov et al. (2011)
+
+We find several high-density areas such as Moscow and a badly supplied Siberia on the other hand but besides those extremes transmitters seem to be quite evenly dispersed. Obviously NTV transmitter location is connected very closely to NTV availability. Therefore, we are going to test several variables on their correlation with transmitter location to find out which to include in order to solve our endogeneity problems. As always, we need to start by importing the data.
+
+**Task:** Press `Edit` and then `Check` to import the data. Note, that we are not filtering out certain regions this time.
+
+```{r "3__39"}
+dat <- read.dta("NTV_Aggregate_Data2.dta")
+```
+
+Firstly, we want to verify our assumption regarding a higher density of NTV transmitters in stronger populated areas by regressing the dummy variable `NTV1999` (NTV1999=1 indicates that there was a transmitter in 1999) on `Gorod`, `population1998` and `wage98`. Step by step we are then going to include more explanatory variables.
+
+**Task:** Perform a regression of NTV1999 on Gorod, population1998 and wage98. Apply regional fixed effects and clustered standard errors. Store your results as `FELM1`. The code for a summary is already given.
+
+```{r "3__40",results='asis'}
+#perform the regression first
+FELM1 <- felm(NTV1999 ~ Gorod + population1998 + wage98 | region | 0 | region, data = dat)
+
+#show summary
+stargazer(FELM1,
+          digits = 4,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+As expected all factors are highly significant. Gorod and population1998 are both variables indicating a high population and obviously it is very efficient to supply people in stronger inhabited regions due to reaching many people with comparatively low effort. Wage98 might be important as there are more resources for building transmitters in wealthier regions. To integrate population and income in a more flexible way we are going to use the polynomials up to the fifth degree. As before we need to create those first using `mutate()`.
+
+**Task:** Press `Check` to create the polynomials of wage98 and population1998.
+
+```{r "3__41"}
+dat <- dat %>%
+  mutate(population1998_2 = population1998^2,
+         population1998_3 = population1998^3,
+         population1998_4 = population1998^4,
+         population1998_5 = population1998^5,
+         wage98_2 = wage98^2,
+         wage98_3 = wage98^3,
+         wage98_4 = wage98^4,
+         wage98_5 = wage98^5)
+```
+
+Note, that we could also use the standard way of using polynomials by adding for example `I(population^2)` as an independent variable. But the results look much more clearly by doing it this way. Now that we have access to the polynomials we simply do another regression of NTV1999 on Gorod as well as all the polynomials. As the code already gets quite long, you won't need to write it yourself.
+
+**Task:** Press `Check` to perform the regression and show the summary of both regressions.
+
+```{r "3__42",results='asis'}
+FELM2 <- felm(NTV1999 ~ Gorod + population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 | region | 0 | region, data = dat)
+
+stargazer(FELM1, FELM2,
+          digits = 4,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+### Joint Significance
+
+Let's have a look at those results. Nearly all variables are individually significant except for the fifth order polynomial of population. But this doesn't mean we should just ignore it as we are not interested in the single polynomials. Adding those only enabled us to have a more flexible regression but we still want to consider wage and population as two factors and not as ten. Therefore, we need to check for joint significance of the polynomials via a F-test. In R this is usually done using the `anova()` function. However, this doesn't work with felm() objects. Fortunately the lfe package also contains a `waldtest()` command which can perform F-tests as well. I've already given the code for the Wald test regarding `population1998` and its polynomials.
+
+**Task:** Press `Check` to perform a F-test on population1998 and its polynomials in the regression FELM2.
+
+```{r "3__43"}
+waldtest(FELM2, ~ population1998 | population1998_2 | population1998_3 | population1998_4 | population1998_5)
+```
+
+We get several values of which we are interested in the F-statistic and especially the associated p value (p.F). In our case the p value for the F-statistic equals roughly 0.000104 which means that the population polynomials are jointly significant at the 0.1% level. This is of much greater importance to us than consider each polynomial individually. We can do the same with the polynomials for `wage98`. Have again a look at the code above and adapt it for this purpose.
+
+**Task:** Perform a F-test on wage98 and its polynomials in FELM2.
+
+```{r "3__44"}
+waldtest(FELM2, ~ wage98 | wage98_2 | wage98_3 | wage98_4 | wage98_5)
+```
+
+
+***
+
+### Award: Joint Significance
+Congratulations, you did your first test for joint significance on your own. As single variables are often not significant individually performing a F-Test is a very important step in the analysis.
+
+***
+
+
+This case is even more clear as the p value is almost not measurable. The wage polynomials are therefore highly significant. Before adding further variables, we want to have a look only at the 1995 voting results that were in our regression model as control variables as well. We therefore need to perform a regression of NTV transmitter location on 1995 voting results. After that we control for the variables we had so far, which we will call from now on 'determinants of transmitter location'.
+
+**Task:** Regress `NTV1999` on `Votes_NDR_1995`, `Votes_SPS_1995`, `Votes_Yabloko_1995`, `Votes_KPRF_1995`, `Votes_LDPR_1995` and `Turnout_1995` with fixed effects and clustered standard errors on the regional level. Store it as `FELM3`. The regression with control variables (`FELM4`) and the stargazer command are already given.
+
+```{r "3__45",results='asis'}
+#perform FELM3
+FELM3 <- felm(NTV1999 ~ Votes_NDR_1995 + Votes_SPS_1995 + Votes_Yabloko_1995 + Votes_KPRF_1995 +
+                Votes_LDPR_1995 + Turnout_1995 | region | 0 | region, data = dat)
+
+#FELM4
+FELM4 <- felm(NTV1999 ~ Gorod + population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               Votes_NDR_1995 + Votes_SPS_1995 + Votes_Yabloko_1995 + Votes_KPRF_1995 +
+               Votes_LDPR_1995 + Turnout_1995 | region | 0 | region, data = dat)
+
+stargazer(FELM1, FELM2, FELM3, FELM4,
+          digits = 4,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+If we do not include control variables, we find that the voting results of Yabloko and turnout have a significant impact on transmitter location. When including the determinants of transmitter location, no voting results are individually significant anymore. Again, we want to have a look at joint significance, this time regarding 1995 voting results.
+
+**Task:** Press `Check` to perform a F-test on joint significance of 1995 voting results in both FELM3 and FELM4.
+
+```{r "3__46"}
+waldtest(FELM3, ~ Votes_NDR_1995 | Votes_SPS_1995 | Votes_Yabloko_1995 | Votes_KPRF_1995 | Votes_LDPR_1995 | Turnout_1995)[c(4,5)]
+waldtest(FELM4, ~ Votes_NDR_1995 | Votes_SPS_1995 | Votes_Yabloko_1995 | Votes_KPRF_1995 | Votes_LDPR_1995 | Turnout_1995)[c(4,5)]
+```
+
+<br>
+
+
+Quiz: What is the joint significance level of the 1995 voting results in FELM4?
+
+- 1% [ ]
+
+- 5% [ ]
+
+- 10% [ ]
+
+- not significant [x]
+
+
+<br>
+
+Note that we can extract the two variables we are interested in by referencing it via '[c(4,5)]'. Looking at the results you can see that joint voting results are highly significant but not significant at all when including the control variables. You can also spot this insignificance when having a closer look at the $R^2$ in FELM2 and FELM4: Including 1995 voting results barely changes the fraction of the variance in NTV1999 that we can explain.
+<br>
+For our fifth version we want to add several socioeconomic factors. Note that not all of them are included in our model explaining voting results due to NTV availability. Those socioeconomic characteristics include the per capita supply with doctors and nurses, population change and migration rate, fractions of retired, unemployed and in farms employed people as well as a crime rate. In the final step we will include `NTV1997` as well which works equivalently to NTV1999 concerning transmitter location in 1997. Including 1997 transmitter locations enables us to analyse whether the **expansion** of the transmitter network was based on any of the other control variables.
+
+**Task:** Press `Check` to do a regression of NTV1999 on the determinants of transmitter location, 1995 voting results and socioeconomic characteristics. The results are stored in `FELM5`. Another regression including NTV1997 is stored in `FELM6`. A summary table of FELM1 through FELM6 will be presented.
+
+```{r "3__47",results='asis'}
+FELM5 <- felm(NTV1999 ~ Gorod + population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               Votes_NDR_1995 + Votes_SPS_1995 + Votes_Yabloko_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Turnout_1995 +
+               doctors_pc1998 + nurses1998 + pop_change98 + migr98 + retired98 + unempl98 + farmers98 + crime_rate98 |
+               region | 0 | region, data = dat)
+FELM6 <- felm(NTV1999 ~ Gorod + population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               Votes_NDR_1995 + Votes_SPS_1995 + Votes_Yabloko_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Turnout_1995 +
+               doctors_pc1998 + nurses1998 + pop_change98 + migr98 + retired98 + unempl98 + farmers98 + crime_rate98 + NTV1997 |
+               region | 0 | 0, data = dat)
+stargazer(FELM1, FELM2, FELM3, FELM4, FELM5, FELM6,
+          digits = 4,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+<br>
+Note, that due to the error that has already occurred with clustered standard errors we are not able to apply those to FELM6. None of the socioeconomic characteristics are significant on their own in FELM5 but again we are more interested in their joint significance. From looking at the $R^2$ we can already tell that they are probably not going to be jointly significant as they add barely any explanatory power compared to FELM4. But to be sure we will perform a F-test anyway.
+
+**Task:** Press `Check` to test all three variable groups for joint significance.
+
+```{r "3__48"}
+#determinants of transmitter location
+waldtest(FELM5, ~ population1998 | population1998_2 | population1998_3 | population1998_4 | population1998_5 |
+               wage98 | wage98_2 | wage98_3 | wage98_4 | wage98_5 | Gorod)[c(4,5)]
+#1995 voting results
+waldtest(FELM5, ~ Votes_NDR_1995 | Votes_SPS_1995 | Votes_Yabloko_1995 | Votes_KPRF_1995 | Votes_LDPR_1995 | Turnout_1995)[c(4,5)]
+#socioeconomic characteristics
+waldtest(FELM5, ~ doctors_pc1998 | nurses1998 | pop_change98 | migr98 | retired98 | unempl98 | farmers98 | crime_rate98)[c(4,5)]
+```
+
+The p value for the socioeconomic factors equals 0.34. Therefore, the socioeconomic factors are jointly not significant at all. As this regression is the one we need to consider when deciding which variables to include in our model for explaining voting results via NTV availability, I also added F-tests for the two other groups. From our results neither 1995 election results nor socioeconomic characteristics are strongly correlated to NTV transmitter location and therefore to NTV availability. However, the determinants of transmitter location are (as the name already implies). Nevertheless, EPZ include, besides the main determinants, all 1995 voting results as well as the per capita supply with nurses and doctors as indicator for the quality of public goods provided. This is not a problem as it won't bias our estimator for the effect of NTV availability but you could discuss if it is really necessary according to our results showing that they are probably not correlated.
+<br><br>
+Finally let's have a look at FELM6. Adding 1997 transmitter location pushes the $R^2$ up to 71% which is not very surprising as most of the transmitters present in 1999 were already built in 1997. NTV1997 is therefore also individually highly significant. Including this factor helps us to get the impact of all the other independent variables only on the expansion of the NTV transmitter network as the older parts are already explained fully by NTV1997. We are therefore going to test all three groups (determinants of transmitter location, 1995 voting results, socioeconomic factors) on joint significance.
+
+**Task:** Press `Check` to perform F-tests on all three variable groups.
+```{r "3__49"}
+#main determinants (population, wage, city)
+lfe::waldtest(FELM6, ~ population1998 | population1998_2 | population1998_3 | population1998_4 | population1998_5 |
+               wage98 | wage98_2 | wage98_3 | wage98_4 | wage98_5 | Gorod)[c(4,5)]
+#1995 voting results
+lfe::waldtest(FELM6, ~ Votes_NDR_1995 | Votes_SPS_1995 | Votes_Yabloko_1995 | Votes_KPRF_1995 | Votes_LDPR_1995 | Turnout_1995)[c(4,5)]
+#socioeconomic characteristics
+lfe::waldtest(FELM6, ~ doctors_pc1998 | nurses1998 | pop_change98 | migr98 | retired98 | unempl98 | farmers98 | crime_rate98)[c(4,5)]
+```
+
+<br>
+
+
+Quiz: Mark the correct statements.
+
+- 1995 voting results are jointly significant on the 10% level. [ ]
+
+- Socioeconomic characteristics are jointly still not significant [x]
+
+- Our determinants of transmitter location are jointly significant at the 1% level [x]
+
+
+<br>
+
+The results show a joint significance of the determinants of transmitter location on the 1% level. However, both socioeconomic characteristics and 1995 voting results are jointly not significant. Especially the insignificance of voting results in FELM6 is of special interest to us as it implies that the expansion of the transmitter network was not based on (and therefore not aiming on) reaching specific groups of voters!
+
+
+
+## Exercise 4 -- An Alternative Approach
+
+In our main calculation we used regional fixed effects to correct for factors only occurring on a regional basis. But one could go further and think about fixed effects on a subregional level. Unfortunately, we cannot simply do the same regression with a different level for the fixed effects as we often only have one observation per electoral district. Integrating fixed effects on groups of one obviously wouldn't make sense. How can we solve this problem? In other words: How can we get at least two observations per subregion? One possibility is to include both 1995 and 1999 voting results as dependent variables. To distinguish between the two elections, we introduce a new factor variable `year`. This has several disadvantages: Firstly, not all parties participated in both elections. More specifically only KPRF (communists), Yabloko (liberals) and LDPR (nationalists) took part in both the 1995 and 1999 election. Furthermore, we consider SPS and its predecessor DVR as the same party (they are both stored as SPS). Secondly, we need to be sure that all other important variables do not change in the meantime. This enables us to simply leave them out of the regression.
+<br>
+As NTV's coverage was negligible in 1995 we assume NTV availability to equal zero in 1995. Including both elections leaves us with at least two observations for every electoral district which allows us to use fixed effects on the subregional level (tik_id). But first we need to load our data.
+
+**Task:** Press `Edit` and `Check` to load the data.
+
+```{r "4__50"}
+dat <- read.dta("NTV_Aggregate_Data2.dta")
+```
+
+EPZ are excluding observations not containing information on the vote share of Unity in 1999 and so will we do. For this purpose we need to use the `is.na()` command from R's `base` package which is loaded by default.
+
+
+***
+
+### Info: base -- is.na()
+If we want to find out which variables are `NA` we can't do this using the `==` operator. Instead R delivers the `is.na()` function. Applying it to a vector will return a vector of equal length consisting of logical values (TRUE if the value is NA, FALSE otherwise). You can also use this to filter for observations that are not NA.
+```{r "4__51",eval=FALSE}
+#return a logical value: which observations do not contain information on NTV availability
+is.na(dat$Watch_probit_1999)
+#return a data set only containing observations (rows) with information on NTV availability
+dat[!is.na(dat$Watch_probit_1999),]
+```
+
+***
+
+
+
+**Task:** Use `is.na()` to exlude those observations from mydata, that have no information on the vote share for Unity in 1999 (`Votes_Edinstvo_1999`). Store the result in `dat`.
+
+```{r "4__52"}
+dat <- dat[!is.na(dat$Votes_Edinstvo_1999),]
+```
+
+We are going to use the `tidyr` package again and therefore we need to change some variable names in this exercise (more precisely, `separate()` needs a uniform syntax of the variable names). Hence, we add 'Votes' in front of our turnout variables and rename our NTV availability `Watch_probit_1999` to `Votes_NTV_1999`. Moreover, we want to generate a variable `Votes_NTV_1995` that equals zero for all observations as NTV was barely receivable in 1995.
+
+**Task:** Have a look through the changes in naming we make and press `check` to perform the code. Note that we need to store the results in a new variable `dat2` as RTutor's control system outputs an error if we change the names within a data set. In a standard R program this would not be an issue!
+
+```{r "4__53"}
+dat2 <- dat %>%
+  rename(Votes_Turnout_1995 = Turnout_1995,
+         Votes_Turnout_1999 = Turnout_1999,
+         Votes_Turnout_2003 = Turnout_2003,
+         Votes_NTV_1999 = Watch_probit_1999) %>%
+  mutate(Votes_NTV_1995 = 0)
+```
+
+Comparable to exercise 1 we use `gather()` and `separate()` to collect all voting results into one column and divide the key into the two pieces of information: `party` and `year`. However, this time we bring it back to a wider format again in such a way that we have a separate column for each party (and Turnout) again including all election years (1995, 1999, 2003). For a visualization and more information on the command we check the info box below.
+
+
+***
+
+### Info: tidyr -- spread()
+Before explaining the `spread()` command let's have a look at our intention: We have to variables a and b and information on both the years 1995 and 1999. Those pieces of information combined result four columns (with 3 observations)
+```{r "4__54",eval=FALSE}
+##   id a95 a99 b95 b99
+## 1  1   2   3   4   3
+## 2  2   3   3   7   5
+## 3  3   1   4   5   5
+```
+Our goal is to get a and b into separate columns and an extra variable `year`. This should look like the following:
+```{r "4__55",eval=FALSE}
+##   id year a b
+## 1  1   95 2 4
+## 2  2   95 3 7
+## 3  3   95 1 5
+## 4  1   99 3 3
+## 5  2   99 3 5
+## 6  3   99 4 5
+```
+This enables us to include the year as a dummy variable into our regression filtering for only the sole effect of the time difference. To get there we first need to bring all four variables `a95`, `a99`, `b95`, `b99` into a `key`-`value` pair, separate the information pieces (a/b and year) and then go back to a wider form using the spread command. Imagine we have used gather() and separate() to get the key variables `party` (a or b) and a `year` variable and a value variable `votes` (see the example below). To get both parties back into a separate column we could do the following:
+```{r "4__56",eval=FALSE}
+##   id party year votes
+## 1  1     a   95     2
+## 2  2     a   95     3
+## 3  3     a   95     1
+## 4  1     a   99     3
+## 5  2     a   99     3
+## 6  3     a   99     4
+## 7  1     b   95     4
+## 8  2     b   95     7
+## 9  3     b   95     5
+##10  1     b   99     3
+##11  2     b   99     5
+##12  3     b   99     5
+library(tidyr)
+data_set %>% spread(party, votes)
+```
+
+***
+
+
+**Task:** Press `check` to gather and separate our data similarly to the example in the info box above and show the first lines of the new data set.
+
+```{r "4__57"}
+d <- dat2 %>%
+  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+  separate(key, c("const", "party", "year"), sep = "_")
+head(d)
+```
+
+Now we need to do the step back to a wider format. Have a look at the data to see its current form and compare it to the example in the info box above (Scroll far to the right for the relevant columns). We must to rearrange the data in a way that for each party voting results over all three elections are in one column using `spread()`.
+
+**Task:** Most of the code is already given so you only need to fill in the gaps for the `spread()` command, uncomment the lines and hit the `check` button.
+
+```{r "4__58"}
+#d <- dat2 %>%
+#  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+#  separate(key, c("const", "party", "year"), sep = "_") %>%
+#  spread(..., ...)
+#head(d)
+d <- dat2 %>%
+  gather(starts_with("Votes"), key = "key", value = "votes") %>%
+  separate(key, c("const", "party", "year"), sep = "_") %>%
+  spread(party, votes)
+head(d)
+```
+
+<br>
+
+Scrolling to the right you can see that now all our parties have a separate column for their voting results and that the time information is given in a variable `year`. The variables for the voting results are simply named after the abbreviations of the parties. `NTV` contains the NTV availability. Remember we wanted to do a the regression only for the years 1995 and 1999. We therefore can exclude voting results from 2003. Furthermore, we are only interested in a small number of variables.
+
+**Task:** Use `filter()` to exclude all observations from 2003 from our data set `d`. In addition use the `select()` command to exclude everything besides `tik_id`, `year`, `SPS`, `Yabloko`, `KPRF`, `LDPR`, `Turnout`, `NTV`. Then use `head()` to show the first lines of our data set.
+
+```{r "4__59"}
+d <- d %>%
+  filter(year != 2003) %>%
+  select(tik_id, year, SPS, Yabloko, KPRF, LDPR, Turnout, NTV)
+head(d)
+```
+
+Finally, we have our data in the correct form to perform our regression. Including the factor variable `year` as a explanatory variable should extinguish all factors that are invariant over time (which applies especially to the control variables we used in earlier regressions as they should not change too much). Remember we wanted to do a approach where we are able to apply subregional fixed effects. This is the case here as we have several observations per electoral district and those are correlated to a high certainty as we should not expect voting results to change that drastically over four years.
+
+**Task:** Press `Check` to perform the regressions of voting results and turnout on NTV availability with fixed effects and clustered standard errors on the subregional level (tik_id). A summary will be presented.
+
+```{r "4__60",results='asis'}
+SPS <- felm(SPS ~ NTV + factor(year) | tik_id | 0 | tik_id, data = d)
+Yabloko <- felm(Yabloko ~ NTV + factor(year) | tik_id | 0 | tik_id, data = d)
+KPRF <- felm(KPRF ~ NTV + factor(year) | tik_id | 0 | tik_id, data = d)
+LDPR <- felm(LDPR ~ NTV + factor(year) | tik_id | 0 | tik_id, data = d)
+Turnout <- felm(Turnout ~ NTV + factor(year) | tik_id | 0 | tik_id, data = d)
+stargazer(SPS, Yabloko, KPRF, LDPR, Turnout,
+          digits = 2,
+          type = "text",
+          style = "aer",
+          report = "vcs*",
+          omit.stat = c("adj.rsq", "ser"))
+```
+
+<br>
+
+Note, that here we are not able to calculate the standard errors used by EPZ in their Stata analysis. Therefore, also significance doesn't match fully as Yabloko should be significant at the 5% level as well. The estimators are correct though. Our hypothesis states that NTV availability should have a significant effect on voting results for parties supported by NTV (here: SPS and Yabloko). This is fulfilled according to our results for at least SPS, With the standard errors used by EPZ this would also be the case for Yabloko. There is no significant effect on parties covered similar (KPRF and LDPR) as well as on turnout. The significant results fit qualitatively to those in our main regression although the coefficient for SPS increases from 3.52 to 6.65 and the one for Yabloko decreases from 3.85 to 1.84. Those differenced can be explained partly by differences in the sample size. Those are caused by the fact that we don't include any socioeconomic control variables in this regression which are not available for many observations.
+
+This procedure relies particularly on the assumption that the control variables that we used in exercise 2 are time invariant (not changing over time). This should be more or less the case as we observe a rather short period of time and variables such as population or supply with doctors probably do not alter that quickly.
+
+
+
+## Exercise 5 -- A Placebo Experiment
+
+The main identifying assumption in our analysis is that political preferences of voters are uncorrelated with NTV availability other than through the effect of NTV if we are controlling for observable regional characteristics. In other words: There are no unobserved variables correlated with both voting results and the error term (NTV availability is an exogenous variable). Otherwise we would face the problem of endogeneity, biasing our estimators as explained before! We might get problems regarding two effects:
+* Reverse causality: subregions with specific voting preferences are more likely to receive NTV
+* Omitted characteristics: unobservable characteristics such as long-time education effects of the Soviet education channel, whose infrastructure was inherited by NTV, correlated both to NTV availability and voting behaviour
+
+To check whether our assumption holds we can conduct a placebo experiment using the same specification as for our regression in Exercise 2.1 but estimating the effects on the **1995** voting results instead. As NTV had nearly no audience in 1995 we expect to find no effect of NTV availability on the voting results implying exogeneity of our variables. We can of course only look at those parties attending the 1995 elections - namely SPS (DVR), Yabloko, KPRF, LDPR and the progovernment party NDR - as well as turnout. As always, we need to start off by loading and modifying our data set. Note, that we are excluding regions 5 and 6 again this time.
+
+**Task:** Press `Edit` and then `Check` to read in the data set, define the polynomials and exclude regions 5 and 6.
+```{r "5__61"}
+dat <- read.dta("NTV_Aggregate_Data2.dta") %>%
+  mutate(population1998_2 = population1998^2,
+         population1998_3 = population1998^3,
+         population1998_4 = population1998^4,
+         population1998_5 = population1998^5,
+         wage98_2 = wage98^2,
+         wage98_3 = wage98^3,
+         wage98_4 = wage98^4,
+         wage98_5 = wage98^5) %>%
+  filter(!(region == 5 | region == 6))
+```
+
+Before doing the main regression EPZ perform a dummy regression of Unity's 1999 voting results on the usual set of explanatory variables (except for 1995 voting results). Only those observations used in this dummy regression are used for the main regression. This happens probably in order to make the results comparable as they are now based on the same set of observations. We will therefore do the same.
+
+**Task:** Press `check` to perform the dummy regression and adapt `dat` so that only observations used in this dummy regression are included in further regressions.
+```{r "5__62"}
+#dummy regression
+dummy <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+#which observations are used for 'dummy'
+temp <- rep(TRUE, nrow(dat))
+temp[na.action(dummy)] <- FALSE
+#modify dat
+dat <- dat[temp,]
+```
+
+In the next step we will perform the regressions like in exercise 2. We can of course not perform a regression for parties not participating in the 1995 election. Besides using 1995 voting results as dependent variable, the only difference is that we obviously won't include 1995 voting results as explanatory control variables.
+
+**Task:** The code for performing the regressions is already given. Add the reg.sum() command to show all results.
+
+```{r "5__63",results='asis'}
+SPS <- felm(Votes_SPS_1995 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+Yabloko <- felm(Votes_Yabloko_1995 ~ Watch_probit_1999 + Gorod +
+                  population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                  wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+KPRF <- felm(Votes_KPRF_1995 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+LDPR <- felm(Votes_LDPR_1995 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+NDR <- felm(Votes_NDR_1995 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+Turnout <- felm(Turnout_1995 ~ Watch_probit_1999 + Gorod +
+                  population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                  wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+
+#add summary command
+reg.sum(SPS, Yabloko, KPRF, LDPR, NDR, Turnout)
+```
+
+<br>
+
+Note, that we find the effect of NTV availability on voting results for LDPR to be significant in contrast to the findings of EPZ. The p-value actually equals 0.1 (not reported), therefore we can assume rounding errors to be leading to this difference in interpretation.
+
+
+Quiz: Does the outcome (consider LDPR not be not significant as in EPZ's analysis) imply fulfilment of our assumptions?
+
+- yes [x]
+
+- no [ ]
+
+
+<br>
+
+The coefficients for all parties have decreased and in none of the regressions we find a significant effect of NTV availability except for this issue with LDPR. Therefore, we can assume that NTV availability is in fact not correlated to any unobserved characteristics that influence the error term on their own - at least not to a relevant extent. Otherwise the effect of those characteristics would have been covered by NTV availability and we had received a significant result. Thus, we can assume our identification assumption to be fulfilled.
+
+
+
+## Exercise 6 -- Persistence of NTV Effects
+
+At the beginning of this problem set I gave you a little summary regarding the political situation and the broadcasting infrastructure. 1999 was the only year a major TV channel influenced an election as NTV was taken over in 2001 by the owned 'Gazprom'. Henceforward there were no substantial differences in news coverage between NTV and the other national TV channels aside from the fact that NTV devoted slightly more time to SPS than ORT and RTR. A strong persistence in the effect of NTV would result in a significant effect of NTV availability in 1999 on the 2003 voting results of parties covered similarly in 2003 but differently in 1999. Controlling for 1999 results should extinguish those effects. For SPS one might find small effects even after controlling for the 1999 election results due to the slight discrepancy in news coverage.
+<br>
+We can't predict the regression outcomes for parties that were not covered differently in 1999 and were only affected indirectly, such as LDPR and KPRF. Unity and OVR formed a new party 'United Russia'. As Unity was influenced negatively and OVR positively the long-term effect is uncertain as well.
+
+**Task:** Press `Edit` and `Check` to read in and adapt our data as we did in exercise 5.
+
+```{r "6__64"}
+dat <- read.dta("NTV_Aggregate_Data2.dta") %>%
+  mutate(population1998_2 = population1998^2,
+         population1998_3 = population1998^3,
+         population1998_4 = population1998^4,
+         population1998_5 = population1998^5,
+         wage98_2 = wage98^2,
+         wage98_3 = wage98^3,
+         wage98_4 = wage98^4,
+         wage98_5 = wage98^5) %>%
+  filter(!(region == 5 | region == 6))
+
+dummy <- felm(Votes_Edinstvo_1999 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 + doctors_pc1998 + nurses1998 | region | 0 | region, data = dat)
+
+temp <- rep(TRUE, nrow(dat))
+temp[na.action(dummy)] <- FALSE
+dat <- dat[temp,]
+```
+
+For each party participating in the 2003 election we are going to perform three separate regressions:
+
+1. The same regression as in exercise 2 but for the 2003 election results
+2. A regression without any electoral control variables
+3. A regression with 1999 electoral control variables (instead of 1995).
+
+Note, that EPZ are reducing the data further to those observations used in the first calculation on SPS and we will do the same.
+
+**Task:** Press `Check` to perform the regression regarding SPS and Yabloko and to show the stargazer summary.
+
+```{r "6__65",results='asis'}
+# SPS
+
+SPS1 <- felm(Votes_SPS_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | region, data = dat)
+
+# reducing the data
+temp <- rep(TRUE, nrow(dat))
+temp[na.action(SPS1)] <- FALSE
+dat <- dat[temp,]
+
+SPS2 <- felm(Votes_SPS_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | 0, data = dat)
+
+SPS3 <- felm(Votes_SPS_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | region, data = dat)
+
+# Yabloko
+
+Yabloko1 <- felm(Votes_Yabloko_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | region, data = dat)
+
+Yabloko2 <- felm(Votes_Yabloko_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | 0, data = dat)
+
+Yabloko3 <- felm(Votes_Yabloko_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | region, data = dat)
+
+stargazer(SPS1, SPS2, SPS3, Yabloko1, Yabloko2, Yabloko3,
+          type = "text",
+          keep = c("Watch_probit"),
+          add.lines = list(c("1995 controls", "yes", "no", "no", "yes", "no", "no"),
+                           c("1999 controls", "no", "no", "yes", "no", "no", "yes")),
+          omit.stat = c("adj.rsq", "ser"),
+          digits = 2,
+          object.names = TRUE,
+          report = "vcs*t",
+          style = "aer")
+```
+<br>
+Remember we expected significant effects of NTV availability in 1999 only for parties with different news coverage in the 2003 campaign once controlling for 1999 electoral outcomes. In addition, we expect significant effects for parties covered differently in the 1999 campaign as long as we do not control for 199 election results. What do these results tell us?
+
+
+Quiz: Are the results consistent with our hypothesis?
+
+- yes [x]
+
+- no [ ]
+
+
+<br>
+
+As described above SPS was treated differently in both the 1999 and 2003 elections when comparing state-controlled channels and NTV. Therefore, the results fit to our hypothesis, that NTV availability in 1999 should have a significant effect in all regressions. Yabloko on the other side was covered differently in 1999 but similarly in 2003. Hence, NTV availability has a strongly significant impact on voting results in 2003 due to the persistence of the effect. Once we control for 1999 electoral results this effect gets 'absorbed' by those control variables. Now we go on to KPRF and LDPR which were both covered similarly in both elections. Therefore, we should not find significant effects either.
+
+**Task:** Press `Check` to perform the regression regarding KPRF and LDPR and to show the stargazer summary.
+
+```{r "6__66",results='asis'}
+
+# KPRF
+
+KPRF1 <- felm(Votes_KPRF_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | 0, data = dat)
+
+KPRF2 <- felm(Votes_KPRF_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | region, data = dat)
+
+KPRF3 <- felm(Votes_KPRF_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | 0, data = dat)
+
+# LDPR
+
+LDPR1 <- felm(Votes_LDPR_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | region, data = dat)
+
+LDPR2 <- felm(Votes_LDPR_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | 0, data = dat)
+
+LDPR3 <- felm(Votes_LDPR_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | region, data = dat)
+
+stargazer(KPRF1, KPRF2, KPRF3, LDPR1, LDPR2, LDPR3,
+          type = "text",
+          keep = c("Watch_probit"),
+          add.lines = list(c("1995 controls", "yes", "no", "no", "yes", "no", "no"),
+                           c("1999 controls", "no", "no", "yes", "no", "no", "yes")),
+          omit.stat = c("adj.rsq", "ser"),
+          digits = 2,
+          object.names = TRUE,
+          report = "vcs*t",
+          style = "aer")
+```
+<br>
+We do find a significant effect in our third KPRF regression (with 1999 electoral controls). But if you have a closer look at the code you will see that this is another example where we are not able to cluster standard errors. EPZ actually do not find any evidence for a significant effect of NTV availability on either KPRF or LDPR. This fits our hypothesis regarding parties covered similarly in both the 1999 and 2000 elections.
+<br>
+The last couple of regressions will cover voting results for `United Russia` formed by Uniy and OVR as well as the turnout. In the first case we can't predict the results as the new party was founded by two parties treated completely different from each other. Furthermore, as always no prediction for turnout can be made.
+
+**Task:** Press `check` to perform the regressions regarding Edinstvo and Turnout and to show the stargazer summary.
+
+```{r "6__67",results='asis'}
+
+# United Russia
+
+Edinstvo1 <- felm(Votes_Edinstvo_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | region, data = dat)
+
+Edinstvo2 <- felm(Votes_Edinstvo_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | region, data = dat)
+
+Edinstvo3 <- felm(Votes_Edinstvo_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | region, data = dat)
+
+# Turnout
+
+Turnout1 <- felm(Turnout_2003 ~ Watch_probit_1999 + Gorod +
+              population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+              wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+              doctors_pc1998 + nurses1998 +
+              Votes_SPS_1995 + Votes_KPRF_1995 + Votes_LDPR_1995 + Votes_NDR_1995 + Votes_Yabloko_1995 + Turnout_1995 |
+              region | 0 | region, data = dat)
+
+Turnout2 <- felm(Turnout_2003 ~ Watch_probit_1999 + Gorod +
+               population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+               wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+               doctors_pc1998 + nurses1998 |
+               region | 0 | 0, data = dat)
+
+Turnout3 <- felm(Turnout_2003 ~ Watch_probit_1999 + Gorod +
+                population1998 + population1998_2 + population1998_3 + population1998_4 + population1998_5 +
+                wage98 + wage98_2 + wage98_3 + wage98_4 + wage98_5 +
+                doctors_pc1998 + nurses1998 +
+                Votes_Edinstvo_1999 + Votes_KPRF_1999 + Votes_LDPR_1999 + Votes_SPS_1999 + Votes_OVR_1999 + Votes_Yabloko_1999 + Turnout_1999 |
+                region | 0 | region, data = dat)
+
+stargazer(Edinstvo1, Edinstvo2, Edinstvo3, Turnout1, Turnout2, Turnout3,
+          type = "text",
+          keep = c("Watch_probit"),
+          add.lines = list(c("1995 controls", "yes", "no", "no", "yes", "no", "no"),
+                           c("1999 controls", "no", "no", "yes", "no", "no", "yes")),
+          omit.stat = c("adj.rsq", "ser"),
+          digits = 2,
+          object.names = TRUE,
+          report = "vcs*t",
+          style = "aer")
+```
+<br>
+In those regressions is another mistake due to not clustering standard errors in `Turnout2`. According to EPZ the results should be significant only on the 5% level instead of the 1% level. However, there seems to be a persistence regarding the effect of NTV availability in 2003 on turnout. In contrast we do not find any persistence for United Russia.
+<br>
+Overall, we find our hypothesis confirmed: Parties covered differently in 1999 experience a long-term persistence of NTV availability!
+
+
+
+## Exercise 7 -- Summary
+
+We started this problem set with the aim of finding out whether mass media can influence voting results and if so: to what extent. Using the example of the 1999 Duma election in Russia we therefore estimated the effect of the availability of NTV, the only major independent TV channel at that time. After a short introduction to the data set, we found out by using regression analysis with a OLS approach that NTV availability does in fact have a significant impact on voting results. Starting with a simple regression only including NTV availability as our explanatory variable we improved our results under special consideration of heterogeneity problems. This finally resulted in a model with several independent variables and regional fixed effects implying that a increase of NTV availability of 10 percentage points led to a significant loss of 1.5 percentage points for the progovernment party 'Unity'. The parties supported by NTV on the other side combined received 1.1 percentage points more in votes. Including clustered standard errors, we were also able to correct our standard errors due to heteroscedasticity problems.
+
+We then discussed which control variables to include into the regression with a special focus on the topic of joint significance. Thereafter we performed both an alternative approach via subregional fixed effects and a placebo experiment to check for the validity of our calculations. Finally, we had a brief look at long time effects in terms of the persistence of the effect of NTV availability as in the 2003 elections there was barely any difference in news coverage. We found a significant although smaller effect.
+
+EPZ show in their paper also (not reported in this problem set) that persuasion rates are much higher when using negative campaigning as Unity was much more negatively affected by NTV availability than the parties supported by NTV were positively affected. Furthermore, they do include a data set from a survey they conducted to calculate the effect of NTV availability based on self-reported vote choice. Unfortunately, they use a probit regression with instrumental variables for this purpose which can, so far, not be done with R. Their results however are qualitatively mostly similar to those in the aggregate level analysis and examinations of special voter groups (e.g. on an educational level) have not brought any new information.
+
+Altogether, in this special situation of a weak and young democracy and with few mass media institutions those can have a significant impact on elections. It is quite imaginable that this effect also occurs in other political systems although probably on a lower level.
+
+Congratulations, you have made it through this problem set! You can no press `Edit` and then `Check` to show all the awards you earned during this journey.
+
+```{r "7__68"}
+awards()
+```
+
+
+
+## Exercise 8 -- References
+
+### Bibliography
+
+* Enikolopov, R., Petrova, M. and Zhuravskaya, E. (2011): Media and Political Persuasion: Evidence from Russia. American Economic Review 101: 3253-3285.
+* White, S., Oates, S., McAllister, I. (2005): Media Effects and the Russian Elections, 1999-2000. British Journal of Political Science 35(2): 191-208.
+* Wooldridge, J.M. (2016): Introductory Econometrics - A Modern Approach. 6th Edition. Boston, MA [i.a.]: Cengage Learning.
+
+### R Packages
+
+* Gaure, S. (2016): lfe. Linear Group Fixed Effects. R package version 2.5-1998. [https://cran.r-project.org/web/packages/lfe/lfe.pdf](https://cran.r-project.org/web/packages/lfe/lfe.pdf)
+* Hlavac, M. (2015): stargazer. Well-Formatted Regression and Summary Statistics Tables. R package version 5.2 [https://cran.r-project.org/web/packages/stargazer/stargazer.pdf](https://cran.r-project.org/web/packages/stargazer/stargazer.pdf)
+* Kranz, S. (2015): RTutor. R Problem Sets with Automatic Test of Solution and Hints. R package version 2015.12.16. [https://github.com/skranz/RTutor](https://github.com/skranz/RTutor)
+* R Core Team (2017): foreign. Read Data Stored by 'Minitab', 'S', 'SAS', 'SPSS', 'Stata', 'Systat', 'Weka', 'dBase', ... R package version 0.8-69. [https://cran.r-project.org/web/packages/foreign/foreign.pdf](https://cran.r-project.org/web/packages/foreign/foreign.pdf)
+* Wickham, H., Francois, R., Henry, L., Mueller, K. (2017): dplyr. A Grammar of Data Manipulation. R package version 0.7.4. [https://cran.r-project.org/web/packages/dplyr/dplyr.pdf](https://cran.r-project.org/web/packages/dplyr/dplyr.pdf)
+* Wickham, H., Henry, L. (2017): tidyr. Easily Tidy Data with 'spread()' and 'gather()' Functions. R package version 0.7.2. [https://cran.r-project.org/web/packages/tidyr/tidyr.pdf](https://cran.r-project.org/web/packages/tidyr/tidyr.pdf)
+* Wickham, H., Chang, W. (2016): ggplot2. Create Elegant Data Visualisations Using the Grammar of Graphics. R package version 2.2.1. [https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf](https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf)
+
+### Functions
+
+* McNeill, M. (2017): weighted_mean [https://stackoverflow.com/questions/40269022/weighted-average-in-r-using-na-weights](https://stackoverflow.com/questions/40269022/weighted-average-in-r-using-na-weights)
+
+
